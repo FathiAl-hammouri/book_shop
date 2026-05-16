@@ -18,10 +18,8 @@ jobs:
         run: |
           docker pull ${{ secrets.DOCKERHUB_FATHI }}/book_shop:${{ vars.IMAGE_VERSION }}
 
-      - name: Stop old containers
+      - name: Deploy
         run: |
-          docker compose -p prod down || true
-
-      - name: Run new containers
-        run: |
-          IMAGE_TAG=${{ vars.IMAGE_VERSION }} docker compose -p prod up -d
+          docker stop book_shop_prod || true
+          docker rm book_shop_prod || true
+          docker run -d --name book_shop_prod -p 8080:8000 ${{ secrets.DOCKERHUB_FATHI }}/book_shop:${{ vars.IMAGE_VERSION }}
