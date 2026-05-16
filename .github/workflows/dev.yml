@@ -22,7 +22,8 @@ jobs:
             --exclude='venv' \
             --exclude='*.pyc' \
             --exclude='app-*.tar.gz' \
-            .
+            --warning=no-file-changed \
+            . || true
 
       - name: Save artifact to artifacts folder
         run: |
