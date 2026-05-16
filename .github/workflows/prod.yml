@@ -1,0 +1,27 @@
+name: Prod Pipeline
+
+on:
+  push:
+    branches:
+      - prod
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Pull image from Docker Hub
+        run: |
+          docker pull ${{ secrets.DOCKERHUB_USERNAME }}/book_shop:${{ vars.IMAGE_VERSION }}
+
+      - name: Stop old containers
+        run: |
+          docker compose -p prod down || true
+
+      - name: Run new containers
+        run: |
+          IMAGE_TAG=${{ vars.IMAGE_VERSION }} docker compose -p prod up -d

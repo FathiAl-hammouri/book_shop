@@ -1,0 +1,47 @@
+name: Dev Pipeline
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Build artifact
+        run: |
+          pip install -r requirements.txt
+          python manage.py collectstatic --noinput
+          tar -czf app-${{ github.sha }}.tar.gz \
+            --exclude='.git' \
+            --exclude='venv' \
+            --exclude='*.pyc' \
+            .
+
+      - name: Save artifact to artifacts folder
+        run: |
+          mkdir -p artifacts
+          mv app-${{ github.sha }}.tar.gz artifacts/
+
+      - name: Commit artifact to repo
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Add artifact app-${{ github.sha }}.tar.gz"
+          file_pattern: artifacts/
+
+      - name: Build Docker image from artifact
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/book_shop:${{ github.sha }} .
+
+      - name: Login to Docker Hub
+        run: |
+          echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Push Docker image
+        run: |
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/book_shop:${{ github.sha }}
