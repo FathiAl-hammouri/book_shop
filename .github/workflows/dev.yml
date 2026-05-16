@@ -13,22 +13,26 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Collect static files
+        run: python manage.py collectstatic --noinput
+        env:
+          SECRET_KEY: "dummy-secret-key"
+          POSTGRES_DB: "dummy"
+          POSTGRES_USER: "dummy"
+          POSTGRES_PASSWORD: "dummy"
+
       - name: Build artifact
         run: |
-          pip install -r requirements.txt
-          python manage.py collectstatic --noinput
-          tar -czf app-${{ github.sha }}.tar.gz \
+          mkdir -p artifacts
+          tar -czf artifacts/app-${{ github.sha }}.tar.gz \
             --exclude='.git' \
             --exclude='venv' \
             --exclude='*.pyc' \
-            --exclude='app-*.tar.gz' \
-            --warning=no-file-changed \
-            . || true
-
-      - name: Save artifact to artifacts folder
-        run: |
-          mkdir -p artifacts
-          mv app-${{ github.sha }}.tar.gz artifacts/
+            --exclude='artifacts' \
+            .
 
       - name: Commit artifact to repo
         uses: stefanzweifel/git-auto-commit-action@v5
@@ -36,13 +40,13 @@ jobs:
           commit_message: "Add artifact app-${{ github.sha }}.tar.gz"
           file_pattern: artifacts/
 
-      - name: Build Docker image from artifact
-        run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/book_shop:${{ github.sha }} .
-
       - name: Login to Docker Hub
         run: |
           echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/book_shop:${{ github.sha }} .
 
       - name: Push Docker image
         run: |
